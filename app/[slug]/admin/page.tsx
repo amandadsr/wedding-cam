@@ -35,7 +35,8 @@ export default async function AdminPage({ params, searchParams }: Params) {
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3001");
 
-  const photosWithUrls = (photos || []).map((p) => ({
+  type PhotoRow = { id: string; storage_path: string; guest_name: string | null; taken_at: string };
+  const photosWithUrls = ((photos || []) as PhotoRow[]).map((p) => ({
     ...p,
     url: `${supabaseUrl}/storage/v1/object/public/photos/${p.storage_path}`,
   }));
