@@ -18,15 +18,16 @@ export default async function AdminPage({ params, searchParams }: Params) {
     .single();
 
   if (error || !event) notFound();
+  const e = event!;
 
-  if (!token || token !== event.admin_token) {
+  if (!token || token !== e.admin_token) {
     redirect(`/${slug}`);
   }
 
   const { data: photos } = await supabase
     .from("photos")
     .select("id, storage_path, guest_name, taken_at")
-    .eq("event_id", event.id)
+    .eq("event_id", e.id)
     .order("taken_at", { ascending: false });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -41,7 +42,7 @@ export default async function AdminPage({ params, searchParams }: Params) {
 
   return (
     <AdminClient
-      event={{ id: event.id, name: event.name, reveal_at: event.reveal_at, slug: event.slug }}
+      event={{ id: e.id, name: e.name, reveal_at: e.reveal_at, slug: e.slug }}
       initialPhotos={photosWithUrls}
       eventUrl={eventUrl}
       supabaseUrl={supabaseUrl}
