@@ -16,7 +16,7 @@ export default async function EventPage({ params }: Params) {
     .single();
 
   if (error || !event) notFound();
-  const e = event!;
+  const e = event as { id: string; name: string; reveal_at: string; slug: string };
 
   const { data: photos } = await supabase
     .from("photos")
