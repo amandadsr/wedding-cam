@@ -49,7 +49,8 @@ export async function generateMetadata({ params }: Params) {
     .eq("slug", slug)
     .single();
 
+  const name = (event as { name: string } | null)?.name;
   return {
-    title: event ? `${event.name} — Wedding Cam` : "Wedding Cam",
+    title: name ? `${name} — Wedding Cam` : "Wedding Cam",
   };
 }
