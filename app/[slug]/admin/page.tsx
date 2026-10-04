@@ -18,7 +18,7 @@ export default async function AdminPage({ params, searchParams }: Params) {
     .single();
 
   if (error || !event) notFound();
-  const e = event!;
+  const e = event as { id: string; name: string; reveal_at: string; slug: string; admin_token: string };
 
   if (!token || token !== e.admin_token) {
     redirect(`/${slug}`);
