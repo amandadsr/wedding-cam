@@ -31,7 +31,9 @@ export default async function AdminPage({ params, searchParams }: Params) {
     .order("taken_at", { ascending: false });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3001");
 
   const photosWithUrls = (photos || []).map((p) => ({
     ...p,
