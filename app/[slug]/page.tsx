@@ -11,12 +11,12 @@ export default async function EventPage({ params }: Params) {
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, name, reveal_at, slug")
+    .select("id, name, reveal_at, slug, logo_url")
     .eq("slug", slug)
     .single();
 
   if (error || !event) notFound();
-  const e = event as { id: string; name: string; reveal_at: string; slug: string };
+  const e = event as { id: string; name: string; reveal_at: string; slug: string; logo_url?: string | null };
 
   const { data: photos } = await supabase
     .from("photos")
@@ -37,6 +37,7 @@ export default async function EventPage({ params }: Params) {
       event={{ id: e.id, name: e.name, reveal_at: e.reveal_at, slug: e.slug }}
       initialPhotos={photosWithUrls}
       supabaseUrl={supabaseUrl}
+      logoUrl={e.logo_url}
     />
   );
 }

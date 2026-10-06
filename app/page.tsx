@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, Sparkles } from "lucide-react";
+import { Camera, Heart, Sparkles, ImagePlus, X } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();
@@ -11,6 +12,24 @@ export default function Home() {
   const [minutes, setMinutes] = useState("180");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(URL.createObjectURL(file));
+    e.target.value = "";
+  }
+
+  function removeLogo() {
+    setLogoFile(null);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(null);
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -20,10 +39,21 @@ export default function Home() {
     setError("");
 
     try {
+      let logoUrl: string | undefined;
+
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append("file", logoFile);
+        const logoRes = await fetch("/api/logos", { method: "POST", body: formData });
+        if (!logoRes.ok) throw new Error("Erro ao enviar logo");
+        const logoData = await logoRes.json();
+        logoUrl = logoData.url;
+      }
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), date, minutesUntilReveal: Number(minutes) }),
+        body: JSON.stringify({ name: name.trim(), date, minutesUntilReveal: Number(minutes), logoUrl }),
       });
 
       if (!res.ok) {
@@ -71,6 +101,62 @@ export default function Home() {
                 maxLength={60}
                 required
               />
+            </div>
+
+            {/* Logo upload */}
+            <div>
+              <label className="block text-sm font-medium text-charcoal mb-1.5">
+                Logo personalizada <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoSelect}
+              />
+              {logoPreview ? (
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={logoPreview}
+                    alt="Logo preview"
+                    width={64}
+                    height={64}
+                    className="w-16 h-16 rounded-xl object-cover border border-gray-200"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-charcoal truncate">{logoFile?.name}</p>
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="text-xs text-rose hover:underline"
+                      >
+                        Trocar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeLogo}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" onClick={removeLogo} className="p-1 text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="w-full px-4 py-3 rounded-xl border border-dashed border-gray-300 text-gray-400 hover:border-rose hover:text-rose transition flex items-center justify-center gap-2 text-sm"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                  Adicionar logo ou foto do casal
+                </button>
+              )}
             </div>
 
             <div>

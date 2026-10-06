@@ -6,6 +6,7 @@ import CameraComponent from "@/components/Camera";
 import PhotoGrid from "@/components/PhotoGrid";
 import RevealTimer from "@/components/RevealTimer";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 interface Photo {
   id: string;
@@ -26,17 +27,32 @@ interface Props {
   event: Event;
   initialPhotos: Photo[];
   supabaseUrl: string;
+  logoUrl?: string | null;
 }
 
 type Tab = "camera" | "album";
 
-export default function EventClient({ event, initialPhotos, supabaseUrl }: Props) {
+export default function EventClient({ event, initialPhotos, supabaseUrl, logoUrl }: Props) {
   const [tab, setTab] = useState<Tab>("camera");
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [revealAt, setRevealAt] = useState(event.reveal_at);
   const [revealed, setRevealed] = useState(() => new Date() >= new Date(event.reveal_at));
   const [photoCount, setPhotoCount] = useState(0);
+  const storageKey = `wedding-cam-name-${event.slug}`;
   const [guestName, setGuestName] = useState("");
   const [nameSet, setNameSet] = useState(false);
+
+  // Read localStorage after hydration to avoid SSR mismatch
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) {
+        setGuestName(saved);
+        setNameSet(true);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRevealed = useCallback(() => setRevealed(true), []);
 
@@ -45,7 +61,7 @@ export default function EventClient({ event, initialPhotos, supabaseUrl }: Props
     setTab("album");
   }, []);
 
-  // Real-time subscription for new photos
+  // Real-time subscriptions: new photos + event updates (reveal_at changes)
   useEffect(() => {
     const channel = supabase
       .channel(`event-${event.id}`)
@@ -63,6 +79,15 @@ export default function EventClient({ event, initialPhotos, supabaseUrl }: Props
           ]);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "events", filter: `id=eq.${event.id}` },
+        (payload) => {
+          const updated = payload.new as { reveal_at: string };
+          setRevealAt(updated.reveal_at);
+          setRevealed(new Date() >= new Date(updated.reveal_at));
+        }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -73,7 +98,17 @@ export default function EventClient({ event, initialPhotos, supabaseUrl }: Props
       <main className="min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <p className="text-3xl mb-3">💐</p>
+            {logoUrl ? (
+              <Image
+                src={logoUrl}
+                alt="Logo do evento"
+                width={80}
+                height={80}
+                className="mx-auto rounded-2xl object-cover w-20 h-20 mb-4 shadow-sm"
+              />
+            ) : (
+              <p className="text-3xl mb-3">💐</p>
+            )}
             <h1 className="text-2xl font-semibold text-charcoal">{event.name}</h1>
             <p className="text-gray-500 text-sm mt-2">Bem-vindo! Como você quer ser identificado nas fotos?</p>
           </div>
@@ -85,10 +120,13 @@ export default function EventClient({ event, initialPhotos, supabaseUrl }: Props
               placeholder="Seu nome (opcional)"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-charcoal placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-rose/30 focus:border-rose transition mb-4"
               maxLength={40}
-              onKeyDown={(e) => e.key === "Enter" && setNameSet(true)}
+              onKeyDown={(e) => { if (e.key === "Enter") { try { localStorage.setItem(storageKey, guestName); } catch { /* ignore */ } setNameSet(true); } }}
             />
             <button
-              onClick={() => setNameSet(true)}
+              onClick={() => {
+                try { localStorage.setItem(storageKey, guestName); } catch { /* ignore */ }
+                setNameSet(true);
+              }}
               className="w-full py-3 bg-rose text-white font-medium rounded-xl hover:bg-rose/90 transition flex items-center justify-center gap-2"
             >
               <Camera className="w-4 h-4" />
@@ -105,12 +143,23 @@ export default function EventClient({ event, initialPhotos, supabaseUrl }: Props
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="font-semibold text-charcoal text-sm">{event.name}</h1>
-            <p className="text-xs text-gray-400">{photos.length} foto{photos.length !== 1 ? "s" : ""}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            {logoUrl && (
+              <Image
+                src={logoUrl}
+                alt="Logo"
+                width={32}
+                height={32}
+                className="rounded-lg object-cover w-8 h-8 flex-shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <h1 className="font-semibold text-charcoal text-sm truncate">{event.name}</h1>
+              <p className="text-xs text-gray-400">{photos.length} foto{photos.length !== 1 ? "s" : ""}</p>
+            </div>
           </div>
           {!revealed && (
-            <RevealTimer revealAt={event.reveal_at} onRevealed={handleRevealed} />
+            <RevealTimer revealAt={revealAt} onRevealed={handleRevealed} />
           )}
           {revealed && (
             <div className="flex items-center gap-1 text-xs text-rose font-medium">
