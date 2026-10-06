@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, X } from "lucide-react";
+import { Lock, X, Trash2, Download } from "lucide-react";
 import Image from "next/image";
 
 interface Photo {
@@ -15,10 +15,43 @@ interface Photo {
 interface PhotoGridProps {
   photos: Photo[];
   revealed: boolean;
+  onDelete?: (id: string) => Promise<void>;
 }
 
-export default function PhotoGrid({ photos, revealed }: PhotoGridProps) {
+export default function PhotoGrid({ photos, revealed, onDelete }: PhotoGridProps) {
   const [lightbox, setLightbox] = useState<Photo | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadPhoto(photo: Photo) {
+    setDownloading(true);
+    try {
+      const res = await fetch(photo.url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      a.download = photo.guest_name
+        ? `${photo.guest_name.replace(/\s+/g, "-")}-${photo.id.slice(0, 6)}.${ext}`
+        : `foto-${photo.id.slice(0, 6)}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (!onDelete) return;
+    setDeleting(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   if (photos.length === 0) {
     return (
@@ -57,6 +90,21 @@ export default function PhotoGrid({ photos, revealed }: PhotoGridProps) {
                 <p className="text-white text-xs truncate">{photo.guest_name}</p>
               </div>
             )}
+            {/* Delete button (admin only) */}
+            {onDelete && (
+              <div
+                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition"
+                onClick={(e) => handleDelete(e, photo.id)}
+              >
+                <div className="p-1.5 bg-red-500 rounded-lg text-white hover:bg-red-600 transition">
+                  {deleting === photo.id ? (
+                    <div className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3 h-3" />
+                  )}
+                </div>
+              </div>
+            )}
           </button>
         ))}
       </div>
@@ -67,13 +115,27 @@ export default function PhotoGrid({ photos, revealed }: PhotoGridProps) {
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <button
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white"
-            onClick={() => setLightbox(null)}
-            aria-label="Fechar"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          {/* Top controls */}
+          <div className="absolute top-4 inset-x-0 flex items-center justify-between px-4">
+            <button
+              onClick={(e) => { e.stopPropagation(); downloadPhoto(lightbox); }}
+              disabled={downloading}
+              className="p-2 text-white/80 hover:text-white disabled:opacity-50 flex items-center gap-1.5 text-sm"
+              aria-label="Baixar foto"
+            >
+              {downloading
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <Download className="w-5 h-5" />}
+            </button>
+            <button
+              className="p-2 text-white/80 hover:text-white"
+              onClick={() => setLightbox(null)}
+              aria-label="Fechar"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
           <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
             <Image
               src={lightbox.url}

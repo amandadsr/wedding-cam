@@ -13,12 +13,12 @@ export default async function AdminPage({ params, searchParams }: Params) {
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, name, reveal_at, slug, admin_token")
+    .select("id, name, reveal_at, slug, admin_token, logo_url")
     .eq("slug", slug)
     .single();
 
   if (error || !event) notFound();
-  const e = event as { id: string; name: string; reveal_at: string; slug: string; admin_token: string };
+  const e = event as { id: string; name: string; reveal_at: string; slug: string; admin_token: string; logo_url?: string | null };
 
   if (!token || token !== e.admin_token) {
     redirect(`/${slug}`);
@@ -50,6 +50,7 @@ export default async function AdminPage({ params, searchParams }: Params) {
       eventUrl={eventUrl}
       supabaseUrl={supabaseUrl}
       adminToken={token}
+      logoUrl={e.logo_url}
     />
   );
 }

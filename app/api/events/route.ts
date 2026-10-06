@@ -17,7 +17,7 @@ function generateSlug(name: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, date, minutesUntilReveal } = await request.json();
+    const { name, date, minutesUntilReveal, logoUrl } = await request.json();
 
     if (!name || !date || !minutesUntilReveal) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       name,
       reveal_at: revealAt.toISOString(),
       admin_token: adminToken,
+      ...(logoUrl ? { logo_url: logoUrl } : {}),
     });
 
     if (error) {

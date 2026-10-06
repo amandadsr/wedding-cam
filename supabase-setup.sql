@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS events (
   name        TEXT NOT NULL,
   reveal_at   TIMESTAMPTZ NOT NULL,
   admin_token TEXT NOT NULL,
+  logo_url    TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -54,3 +55,28 @@ WITH CHECK (bucket_id = 'photos');
 CREATE POLICY "photos_public_read"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'photos');
+
+-- Policy de exclusão (para admin deletar fotos/logos via API)
+CREATE POLICY "photos_delete"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'photos');
+
+-- Policies de exclusão nas tabelas (admin verifica token na API)
+CREATE POLICY "photos_delete" ON photos FOR DELETE USING (true);
+CREATE POLICY "events_delete" ON events FOR DELETE USING (true);
+
+-- Policy de atualização (para alterar reveal_at via API)
+CREATE POLICY "events_update" ON events FOR UPDATE USING (true);
+
+-- ============================================================
+-- SE JÁ TEM O BANCO CRIADO, rode apenas estas linhas no SQL Editor:
+-- ============================================================
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS logo_url TEXT;
+--
+-- CREATE POLICY "photos_delete" ON storage.objects FOR DELETE USING (bucket_id = 'photos');
+-- CREATE POLICY "photos_delete" ON photos FOR DELETE USING (true);
+-- CREATE POLICY "events_delete" ON events FOR DELETE USING (true);
+-- CREATE POLICY "events_update" ON events FOR UPDATE USING (true);
+--
+-- ALTER PUBLICATION supabase_realtime ADD TABLE events;
+-- ============================================================
