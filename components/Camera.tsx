@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, FlipHorizontal, X, Check, Loader2, ImagePlus, Send } from "lucide-react";
+import { Camera, FlipHorizontal, X, Check, Loader2, ImagePlus, Send, Images } from "lucide-react";
 
 interface CameraProps {
   eventId: string;
@@ -299,6 +299,17 @@ export default function CameraComponent({ eventId, guestName, onPhotoTaken }: Ca
         onChange={handleGallerySelect}
       />
 
+      {/* Gallery upload shortcut */}
+      {!preview && (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-dashed border-rose/40 bg-rose/5 text-rose text-sm font-medium hover:bg-rose/10 hover:border-rose/60 transition"
+        >
+          <Images className="w-4 h-4" />
+          Enviar várias fotos da galeria
+        </button>
+      )}
+
       {/* Camera viewfinder */}
       {!preview && (
         <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4]">
@@ -338,19 +349,25 @@ export default function CameraComponent({ eventId, guestName, onPhotoTaken }: Ca
                 </button>
               </div>
 
-              <div className="absolute bottom-6 inset-x-0 flex items-center justify-center gap-8">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 bg-black/40 rounded-full text-white backdrop-blur-sm hover:bg-black/60 transition"
-                  aria-label="Escolher da galeria"
-                >
-                  <ImagePlus className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={takePhoto}
-                  className="w-16 h-16 rounded-full bg-white border-4 border-white/50 hover:scale-95 active:scale-90 transition-transform shadow-lg"
-                  aria-label="Tirar foto"
-                />
+              <div className="absolute bottom-6 inset-x-0 flex items-end justify-center gap-8">
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition"
+                    aria-label="Escolher da galeria"
+                  >
+                    <ImagePlus className="w-5 h-5" />
+                  </button>
+                  <span className="text-white/90 text-xs font-medium drop-shadow">Galeria</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={takePhoto}
+                    className="w-16 h-16 rounded-full bg-white border-4 border-white/50 hover:scale-95 active:scale-90 transition-transform shadow-lg"
+                    aria-label="Tirar foto"
+                  />
+                  <span className="text-white/90 text-xs font-medium drop-shadow">Foto</span>
+                </div>
                 <div className="w-11 h-11" />
               </div>
             </>
