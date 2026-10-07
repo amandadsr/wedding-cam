@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Copy, Download, QrCode, Images, Check, ExternalLink, Trash2, AlertTriangle, Pencil } from "lucide-react";
+import { Copy, Download, QrCode, Images, Check, ExternalLink, Trash2, AlertTriangle, Pencil, PackageOpen } from "lucide-react";
 import PhotoGrid from "@/components/PhotoGrid";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -47,6 +47,8 @@ export default function AdminClient({ event, initialPhotos, eventUrl, supabaseUr
   const [savingReveal, setSavingReveal] = useState(false);
   const [revealError, setRevealError] = useState("");
   const [revealAt, setRevealAt] = useState(event.reveal_at);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setAdminUrl(window.location.href); }, []);
@@ -164,6 +166,46 @@ export default function AdminClient({ event, initialPhotos, eventUrl, supabaseUr
     } catch {
       setDeletingEvent(false);
       setShowDeleteEventModal(false);
+    }
+  }
+
+  async function downloadAll() {
+    if (photos.length === 0 || downloadingAll) return;
+    setDownloadingAll(true);
+    setDownloadProgress(0);
+
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+
+      await Promise.all(
+        photos.map(async (photo, i) => {
+          try {
+            const res = await fetch(photo.url);
+            const blob = await res.blob();
+            const ext = blob.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+            const name = photo.guest_name
+              ? `${String(i + 1).padStart(3, "0")}-${photo.guest_name}.${ext}`
+              : `${String(i + 1).padStart(3, "0")}.${ext}`;
+            zip.file(name, blob);
+          } catch {
+            // skip failed photo
+          } finally {
+            setDownloadProgress((p) => p + 1);
+          }
+        })
+      );
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${event.slug}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingAll(false);
+      setDownloadProgress(0);
     }
   }
 
@@ -291,7 +333,27 @@ export default function AdminClient({ event, initialPhotos, eventUrl, supabaseUr
             <Images className="w-5 h-5 text-rose" />
             <h2 className="font-semibold text-charcoal">Álbum ({photos.length} fotos)</h2>
             {photos.length > 0 && (
-              <span className="text-xs text-gray-400 ml-auto">Passe o mouse para excluir</span>
+              <>
+                <span className="text-xs text-gray-400 ml-auto hidden sm:block">Passe o mouse para excluir</span>
+                <button
+                  onClick={downloadAll}
+                  disabled={downloadingAll}
+                  className="ml-auto sm:ml-2 flex items-center gap-1.5 px-3 py-1.5 bg-rose text-white text-xs font-medium rounded-lg hover:bg-rose/90 transition disabled:opacity-60"
+                  title="Baixar todas as fotos"
+                >
+                  {downloadingAll ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {downloadProgress}/{photos.length}
+                    </>
+                  ) : (
+                    <>
+                      <PackageOpen className="w-3.5 h-3.5" />
+                      Baixar tudo
+                    </>
+                  )}
+                </button>
+              </>
             )}
           </div>
           <PhotoGrid photos={photos} revealed={true} onDelete={handleDeletePhoto} />
